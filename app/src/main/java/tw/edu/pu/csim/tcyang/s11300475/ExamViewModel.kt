@@ -8,13 +8,17 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 
 data class ExamUiState(
-    // 請修改成您的系級與姓名！
     val authorInfo: String = "作者：資管二A 陳宇謙",
     val screenWidthPx: Int = 0,
     val screenHeightPx: Int = 0,
-    val score: Int = 0
+    val score: Int = 0,
+    // 新增：角色圖示的固定尺寸 (300px)
+    val roleIconSizePx: Int = 300
 )
 
 class ExamViewModel(application: Application) : AndroidViewModel(application) {
@@ -27,14 +31,12 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun getScreenDimensions() {
-        // 讀取螢幕寬度高度 (px)
         val resources = getApplication<Application>().resources
         val displayMetrics = resources.displayMetrics
 
         val width = displayMetrics.widthPixels
         val height = displayMetrics.heightPixels
 
-        // 更新 UI 狀態
         uiState = uiState.copy(
             screenWidthPx = width,
             screenHeightPx = height
