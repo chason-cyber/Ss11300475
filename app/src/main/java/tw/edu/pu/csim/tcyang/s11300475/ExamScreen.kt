@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.LaunchedEffect // 新增：用於遊戲循環
 
 @Composable
 fun ExamScreen(
@@ -34,14 +35,24 @@ fun ExamScreen(
             modifier = Modifier
                 .fillMaxSize()
                 // 黃色背景
-                .background(Color(0xFFFFFF00)) // 實作黃色背景
+                .background(Color(0xFFFFFF00))
                 .padding(innerPadding),
         ) {
 
-            with(density) {
+            // *** 核心改動：使用 LaunchedEffect 驅動 ViewModel 的更新 ***
+            LaunchedEffect(Unit) {
+                // ViewModel 中的 startGameLoop 已經開始了 coroutine job，
+                // 這裡的 LaunchedEffect 確保 ViewModel 中的 updateDropPosition 會被週期性呼叫
+                // 如果您在 ViewModel 中已經使用 while(true) 循環，這裡可以留空或刪除。
+                // 由於 ViewModel 已經有 startGameLoop，這裡不需要額外添加 while(true)
+            }
+            // **********************************************************
 
-                val pxToDp = uiState.roleIconSizePx.toDp() // 300px 轉 Dp
-                val offsetHalfScreen = (uiState.screenHeightPx / 2f).toDp() // 螢幕高度一半
+            with(density) {
+                // 角色圖示尺寸 (300px 轉 Dp)
+                val pxToDp = uiState.roleIconSizePx.toDp()
+                // 螢幕高度一半 (px 轉 Dp)
+                val offsetHalfScreen = (uiState.screenHeightPx / 2f).toDp()
 
                 // =========================================================================
                 // 區塊 1: 中央內容 (圖片與文字置中)
@@ -49,7 +60,7 @@ fun ExamScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .align(Alignment.Center), // 圖片與文字置中
+                        .align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -64,7 +75,6 @@ fun ExamScreen(
                             .background(Color.White)
                     )
 
-                    // 間距高度 10dp
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
@@ -72,101 +82,91 @@ fun ExamScreen(
                         fontSize = 18.sp,
                         textAlign = TextAlign.Center
                     )
-
                     Text(
-                        text = uiState.authorInfo, // 顯示系級與姓名
+                        text = uiState.authorInfo,
                         fontSize = 16.sp,
                         textAlign = TextAlign.Center
                     )
 
-                    // 間距高度 10dp
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // 螢幕寬高 (px)
                     Text(
-                        text = "螢幕大小: ${uiState.screenWidthPx} * ${uiState.screenHeightPx} ", // 讀取螢幕寬高 px
+                        text = "螢幕大小: ${uiState.screenWidthPx} * ${uiState.screenHeightPx} ",
                         fontSize = 16.sp,
                         textAlign = TextAlign.Center
                     )
 
-                    // 間距高度 10dp
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // 成績 (來自 ViewModel)
+                    // 成績與碰撞結果顯示
                     Text(
-                        text = "成績: ${uiState.score}分",
+                        // 修正：顯示成績與碰撞訊息
+                        text = "成績: ${uiState.score}分 ${uiState.collisionMessage}",
                         fontSize = 16.sp,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                 }
 
                 // =========================================================================
-                // 區塊 2: 隨機掉落的服務圖示 (第四題新增)
+                // 區塊 2: 掉落中的服務圖示 (可拖曳)
                 // =========================================================================
                 Image(
                     painter = painterResource(id = uiState.gameIconState.resourceId),
                     contentDescription = "掉落中的服務圖示",
-                    // 假設服務圖示大小為 100dp，需要與 ViewModel 中的 iconSizeDp 一致
+                    // 假設服務圖示大小為 100dp
                     modifier = Modifier
                         .size(100.dp)
-
-                        // 應用 X 軸和 Y 軸偏移，控制圖示的掉落和水平位置
                         .offset(
                             x = uiState.gameIconState.xOffsetDp,
                             y = uiState.gameIconState.yOffsetDp
                         )
-
-                        // 實作水平拖曳功能
+                        // 水平拖曳手勢
                         .pointerInput(Unit) {
                             detectHorizontalDragGestures { change, dragAmount ->
-                                change.consume() // 避免與其他手勢衝突
-                                // 將拖曳的像素量轉換為 Dp，傳回給 ViewModel
+                                change.consume()
                                 viewModel.updateDragPosition(dragAmount.toDp())
                             }
                         }
                 )
 
-
                 // =========================================================================
-                // 區塊 3: 角色圖示 (絕對定位)
+                // 區塊 3: 角色圖示 (靜態位置)
                 // =========================================================================
 
-                // 1. 嬰幼兒圖示 (左邊，切齊螢幕 1/2 下方)
+                // 角色 0: 嬰幼兒 (上排左邊)
                 Image(
                     painter = painterResource(id = R.drawable.role0),
                     contentDescription = "嬰幼兒",
                     modifier = Modifier
                         .size(pxToDp) // 300px 尺寸
                         .align(Alignment.BottomStart) // 貼齊左下角
-                        .offset(y = -offsetHalfScreen) // 向上偏移量 = 螢幕高度一半
+                        .offset(y = -offsetHalfScreen) // 向上偏移螢幕高度一半
                 )
-
-                // 2. 兒童圖示 (右邊，切齊螢幕 1/2 下方)
+                // 角色 1: 兒童 (上排右邊)
                 Image(
                     painter = painterResource(id = R.drawable.role1),
                     contentDescription = "兒童",
                     modifier = Modifier
                         .size(pxToDp) // 300px 尺寸
                         .align(Alignment.BottomEnd) // 貼齊右下角
-                        .offset(y = -offsetHalfScreen) // 向上偏移量 = 螢幕高度一半
+                        .offset(y = -offsetHalfScreen) // 向上偏移螢幕高度一半
                 )
-
-                // 3. 成人圖示 (左邊，切齊螢幕底部)
+                // 角色 2: 成人 (下排左邊)
                 Image(
                     painter = painterResource(id = R.drawable.role2),
                     contentDescription = "成人",
                     modifier = Modifier
                         .size(pxToDp) // 300px 尺寸
-                        .align(Alignment.BottomStart) // 貼齊左下角
+                        .align(Alignment.BottomStart) // 貼齊左下角 (Y 偏移量為 0)
                 )
-
-                // 4. 一般民眾圖示 (右邊，切齊螢幕底部)
+                // 角色 3: 一般民眾 (下排右邊)
                 Image(
                     painter = painterResource(id = R.drawable.role3),
                     contentDescription = "一般民眾",
                     modifier = Modifier
                         .size(pxToDp) // 300px 尺寸
-                        .align(Alignment.BottomEnd) // 貼齊右下角
+                        .align(Alignment.BottomEnd) // 貼齊右下角 (Y 偏移量為 0)
                 )
             }
         }
