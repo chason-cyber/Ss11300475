@@ -20,14 +20,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
-import androidx.compose.runtime.LaunchedEffect // 新增：用於遊戲循環
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun ExamScreen(
+    // 使用 Compose 提供的 viewModel() 函數來取得或創建 ViewModel 實例
     viewModel: ExamViewModel = viewModel(factory = ExamViewModel.Factory)
 ) {
     val uiState = viewModel.uiState
 
+    // 取得當前密度，用於將像素 (px) 轉換為 Dp
     val density = LocalDensity.current
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -39,19 +41,15 @@ fun ExamScreen(
                 .padding(innerPadding),
         ) {
 
-            // *** 核心改動：使用 LaunchedEffect 驅動 ViewModel 的更新 ***
+            // ViewModel.init { startGameLoop() } 已經啟動遊戲迴圈，這裡無需額外啟動
             LaunchedEffect(Unit) {
-                // ViewModel 中的 startGameLoop 已經開始了 coroutine job，
-                // 這裡的 LaunchedEffect 確保 ViewModel 中的 updateDropPosition 會被週期性呼叫
-                // 如果您在 ViewModel 中已經使用 while(true) 循環，這裡可以留空或刪除。
-                // 由於 ViewModel 已經有 startGameLoop，這裡不需要額外添加 while(true)
+                // Keep empty or remove if not strictly needed, as the game loop is in ViewModel.
             }
-            // **********************************************************
 
             with(density) {
                 // 角色圖示尺寸 (300px 轉 Dp)
                 val pxToDp = uiState.roleIconSizePx.toDp()
-                // 螢幕高度一半 (px 轉 Dp)
+                // 螢幕高度一半 (px 轉 Dp)，用於計算上排角色的 offset
                 val offsetHalfScreen = (uiState.screenHeightPx / 2f).toDp()
 
                 // =========================================================================
@@ -67,7 +65,7 @@ fun ExamScreen(
 
                     // 原始的圓形圖片
                     Image(
-                        painter = painterResource(id = R.drawable.happy),
+                        painter = painterResource(id = R.drawable.happy), // 假設 happy 是您的圖片資源
                         contentDescription = "服務大考驗圖片",
                         modifier = Modifier
                             .size(150.dp)
@@ -101,7 +99,7 @@ fun ExamScreen(
 
                     // 成績與碰撞結果顯示
                     Text(
-                        // 修正：顯示成績與碰撞訊息
+                        // 顯示成績與碰撞訊息 (由 ViewModel 提供格式化的訊息)
                         text = "成績: ${uiState.score}分 ${uiState.collisionMessage}",
                         fontSize = 16.sp,
                         textAlign = TextAlign.Center,
@@ -114,17 +112,18 @@ fun ExamScreen(
                 Image(
                     painter = painterResource(id = uiState.gameIconState.resourceId),
                     contentDescription = "掉落中的服務圖示",
-                    // 假設服務圖示大小為 100dp
+                    // 服務圖示大小為 100dp
                     modifier = Modifier
                         .size(100.dp)
                         .offset(
                             x = uiState.gameIconState.xOffsetDp,
                             y = uiState.gameIconState.yOffsetDp
                         )
-                        // 水平拖曳手勢
+                        // 水平拖曳手勢處理
                         .pointerInput(Unit) {
                             detectHorizontalDragGestures { change, dragAmount ->
                                 change.consume()
+                                // 將拖曳像素量轉換為 Dp 傳遞給 ViewModel
                                 viewModel.updateDragPosition(dragAmount.toDp())
                             }
                         }
@@ -132,41 +131,42 @@ fun ExamScreen(
 
                 // =========================================================================
                 // 區塊 3: 角色圖示 (靜態位置)
+                // 每個角色圖示都是 300px (pxToDp)
                 // =========================================================================
 
                 // 角色 0: 嬰幼兒 (上排左邊)
                 Image(
-                    painter = painterResource(id = R.drawable.role0),
+                    painter = painterResource(id = R.drawable.role0), // 假設 role0 是您的圖片資源
                     contentDescription = "嬰幼兒",
                     modifier = Modifier
-                        .size(pxToDp) // 300px 尺寸
-                        .align(Alignment.BottomStart) // 貼齊左下角
-                        .offset(y = -offsetHalfScreen) // 向上偏移螢幕高度一半
+                        .size(pxToDp)
+                        .align(Alignment.BottomStart) // 先貼齊底部左邊
+                        .offset(y = -offsetHalfScreen) // 再向上偏移螢幕高度一半
                 )
                 // 角色 1: 兒童 (上排右邊)
                 Image(
-                    painter = painterResource(id = R.drawable.role1),
+                    painter = painterResource(id = R.drawable.role1), // 假設 role1 是您的圖片資源
                     contentDescription = "兒童",
                     modifier = Modifier
-                        .size(pxToDp) // 300px 尺寸
-                        .align(Alignment.BottomEnd) // 貼齊右下角
-                        .offset(y = -offsetHalfScreen) // 向上偏移螢幕高度一半
+                        .size(pxToDp)
+                        .align(Alignment.BottomEnd) // 先貼齊底部右邊
+                        .offset(y = -offsetHalfScreen) // 再向上偏移螢幕高度一半
                 )
                 // 角色 2: 成人 (下排左邊)
                 Image(
-                    painter = painterResource(id = R.drawable.role2),
+                    painter = painterResource(id = R.drawable.role2), // 假設 role2 是您的圖片資源
                     contentDescription = "成人",
                     modifier = Modifier
-                        .size(pxToDp) // 300px 尺寸
-                        .align(Alignment.BottomStart) // 貼齊左下角 (Y 偏移量為 0)
+                        .size(pxToDp)
+                        .align(Alignment.BottomStart) // 貼齊底部左邊
                 )
                 // 角色 3: 一般民眾 (下排右邊)
                 Image(
-                    painter = painterResource(id = R.drawable.role3),
+                    painter = painterResource(id = R.drawable.role3), // 假設 role3 是您的圖片資源
                     contentDescription = "一般民眾",
                     modifier = Modifier
-                        .size(pxToDp) // 300px 尺寸
-                        .align(Alignment.BottomEnd) // 貼齊右下角 (Y 偏移量為 0)
+                        .size(pxToDp)
+                        .align(Alignment.BottomEnd) // 貼齊底部右邊
                 )
             }
         }

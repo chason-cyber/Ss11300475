@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.ui.geometry.Offset
 
 // ==================================================================================
 // 遊戲狀態 DTO: 用於服務圖示的動態狀態
@@ -31,7 +30,7 @@ data class GameIconState(
 )
 
 data class ExamUiState(
-    val authorInfo: String = "作者：資管二A 陳宇謙",
+    val authorInfo: String = "作者：資管二A 陳宇謙", // 請自行修改
     val screenWidthPx: Int = 0,
     val screenHeightPx: Int = 0,
     val score: Int = 0,
@@ -47,27 +46,27 @@ data class ExamUiState(
 // ==================================================================================
 class ExamViewModel(application: Application) : AndroidViewModel(application) {
 
-    // 遊戲圖示列表
+    // 遊戲圖示列表 (請確保您的 drawable 資源存在這些名稱)
     private val serviceIcons = listOf(
         R.drawable.service0,
         R.drawable.service1,
         R.drawable.service2
     )
 
-    // 服務圖示的固定尺寸 (DP 單位，對應 ExamScreen.kt 中的 100.dp)
+    // 服務圖示的固定尺寸 (100dp)
     private val ICON_SIZE_DP = 100.dp
 
-    // 角色圖示的固定尺寸 (DP 單位，由 300px 轉換而來)
+    // 角色圖示的固定尺寸 (由 300px 轉換而來)
     private var ROLE_ICON_SIZE_DP: Dp = 0.dp
 
-    // 遊戲狀態
+    // 遊戲狀態 (使用 mutableStateOf)
     var uiState by mutableStateOf(ExamUiState())
         private set
 
     // 動畫 Job
     private var gameJob: Job? = null
 
-    // 固定的掉落速度 (20px) 和間隔 (0.1s)
+    // 掉落速度和間隔
     private val DROP_SPEED_PX = 20
     private val DROP_INTERVAL_MS = 100L // 0.1s
 
@@ -141,12 +140,14 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
 
         val screenHeightDp = (uiState.screenHeightPx / density).dp
 
+        val scoreToAdd = 10 // 碰撞或掉落都加 10 分
+
         // 1. 檢查碰撞 (角色圖示)
         val collisionResult = checkCollision(newYDp)
 
         if (collisionResult != null) {
-            val scoreToAdd = 10
-            updateScoreAndMessage(scoreToAdd, "(碰撞 ${collisionResult}")
+            // 碰撞角色圖示
+            updateScoreAndMessage(scoreToAdd, "(碰撞 ${collisionResult})")
 
             // 讓圖示停在碰撞位置
             uiState = uiState.copy(
@@ -165,7 +166,9 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
         // 圖示的底部 (newYDp + ICON_SIZE_DP) 達到螢幕高度
         if ((newYDp + ICON_SIZE_DP).value >= screenHeightDp.value) {
             val finalYDp = screenHeightDp - ICON_SIZE_DP // 圖示底部貼齊螢幕底部
-            updateScoreAndMessage(0, "(掉到最下方)")
+
+            // 掉落底部，加 10 分，並顯示 "(掉到最下方)"
+            updateScoreAndMessage(scoreToAdd, "(掉到最下方)")
 
             // 讓圖示貼齊底部，並停止
             uiState = uiState.copy(
@@ -201,18 +204,18 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
         val screenWidthDp = (uiState.screenWidthPx / density).dp.value
         val roleSize = ROLE_ICON_SIZE_DP.value // 300px 轉換成的 Dp 值
 
-        // *** 修正 Y 軸計算，與 ExamScreen.kt 的 offset 邏輯對應 ***
+        // *** Y 軸計算，與 ExamScreen.kt 的 offset 邏輯對應 ***
         val halfScreenY = screenHeightDp / 2f
 
-        // 上排角色 (role0, role1)
-        // 貼齊 Bottom (screenHeightDp) 後，向上偏移螢幕高度的一半 (halfScreenY)
+        // 上排角色 (role0, role1) 的 Y 範圍
+        // 頂部 Y = 螢幕高度一半 - 角色尺寸
         val roleYUpperBottom = halfScreenY
-        val roleYUpper = roleYUpperBottom - roleSize // 上排角色頂部 Y 座標
+        val roleYUpper = roleYUpperBottom - roleSize
 
-        // 下排角色 (role2, role3)
-        // 貼齊 Bottom (screenHeightDp)
+        // 下排角色 (role2, role3) 的 Y 範圍
+        // 頂部 Y = 螢幕高度 - 角色尺寸
         val roleYLowerBottom = screenHeightDp
-        val roleYLower = roleYLowerBottom - roleSize // 下排角色頂部 Y 座標
+        val roleYLower = roleYLowerBottom - roleSize
 
         // X 軸計算 (貼齊 Start/End)
         val roleLeftStart = 0f
@@ -223,22 +226,22 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
         // 1. 嬰幼兒 (上排/左邊)
         if (fallingIconBottom > roleYUpper && fallingIconTop < roleYUpperBottom &&
             fallingIconRight > roleLeftStart && fallingIconLeft < roleLeftEnd) {
-            return "嬰幼兒圖示)"
+            return "嬰幼兒圖示"
         }
         // 2. 兒童 (上排/右邊)
         if (fallingIconBottom > roleYUpper && fallingIconTop < roleYUpperBottom &&
             fallingIconRight > roleRightStart && fallingIconLeft < roleRightEnd) {
-            return "兒童圖示)"
+            return "兒童圖示"
         }
         // 3. 成人 (下排/左邊)
         if (fallingIconBottom > roleYLower && fallingIconTop < roleYLowerBottom &&
             fallingIconRight > roleLeftStart && fallingIconLeft < roleLeftEnd) {
-            return "成人圖示)"
+            return "成人圖示"
         }
         // 4. 一般民眾 (下排/右邊)
         if (fallingIconBottom > roleYLower && fallingIconTop < roleYLowerBottom &&
             fallingIconRight > roleRightStart && fallingIconLeft < roleRightEnd) {
-            return "一般民眾圖示)"
+            return "一般民眾圖示"
         }
 
         return null
